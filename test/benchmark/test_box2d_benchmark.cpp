@@ -63,7 +63,7 @@ result_t measure(clock_t *times) {
 }
 
 b2World *world;
-clock_t *times, minn = CLOCKS_PER_SEC * 1000 * 100, maxx = -1;
+clock_t *times_, minn = CLOCKS_PER_SEC * 1000 * 100, maxx = -1;
 b2Body* topBody;
 int32 frameCounter = 0;
 
@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
   FRAMES += WARMUP;
   WARMUP = 0;
 
-  times = new clock_t[FRAMES];
+  times_ = new clock_t[FRAMES];
 
 	// Define the gravity vector.
 	b2Vec2 gravity(0.0f, -10.0f);
@@ -149,7 +149,7 @@ void iter() {
 	  world->Step(1.0f/60.0f, 3, 3);
 	  clock_t end = clock();
     clock_t curr = end - start;
-	  times[frameCounter] = curr;
+	  times_[frameCounter] = curr;
     if (curr < minn) minn = curr;
     if (curr > maxx) maxx = curr;
 #if DEBUG
@@ -164,7 +164,7 @@ void iter() {
 
   frameCounter++;
 
-  result_t result = measure(times);
+  result_t result = measure(times_);
 
   printf("frame averages: %.3f +- %.3f, range: %.3f to %.3f \n", result.mean, result.stddev, float(minn)/CLOCKS_PER_SEC * 1000, float(maxx)/CLOCKS_PER_SEC * 1000);
 }
