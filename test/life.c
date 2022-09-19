@@ -68,7 +68,9 @@ void game(int w, int h, int i)
       nudge(univ, w, h); // keep it interesting for benchmark
     } else {
 #if !__EMSCRIPTEN__
+#ifndef __CHEERP__
       usleep(20000);
+#endif
 #endif
       show(univ, w, h);
     }
