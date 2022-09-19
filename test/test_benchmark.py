@@ -33,10 +33,10 @@ from tools import building, utils
 # 5: 10 seconds
 DEFAULT_ARG = '4'
 
-TEST_REPS = 5
+TEST_REPS = 1
 
 # by default, run just core benchmarks
-CORE_BENCHMARKS = True
+CORE_BENCHMARKS = False
 # if a specific benchmark is requested, don't limit to core
 if 'benchmark.' in str(sys.argv):
   CORE_BENCHMARKS = False
@@ -295,7 +295,7 @@ class CheerpBenchmarker(Benchmarker):
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     cheerp_args = [
-      '-fno-math-errno',
+      '-fno-math-errno'
     ]
     cheerp_args += self.args
     self.parent = parent
@@ -303,18 +303,20 @@ class CheerpBenchmarker(Benchmarker):
       # build as "native" (so no emcc env stuff), but with all the cheerp stuff
       # set in the env
       cheerp_args = cheerp_args + lib_builder(self.name, native=True, env_init={
+        'CFLAGS': ' '.join(LLVM_FEATURE_FLAGS + self.args),
+        'CXXFLAGS': ' '.join(LLVM_FEATURE_FLAGS + self.args + ["-Wno-c++11-narrowing"]),
         'CC': CHEERP_BIN + 'clang',
         'CXX': CHEERP_BIN + 'clang++',
-        'AR': CHEERP_BIN + '../libexec/cheerp-unknown-none-ar',
+        'AR': CHEERP_BIN + 'llvm-ar',
         'LD': CHEERP_BIN + 'clang',
         'NM': CHEERP_BIN + 'llvm-nm',
         'LDSHARED': CHEERP_BIN + 'clang',
-        'RANLIB': CHEERP_BIN + '../libexec/cheerp-unknown-none-ranlib',
-        'CXXFLAGS': "-Wno-c++11-narrowing",
+        'RANLIB': CHEERP_BIN + 'llvm-ar s',
         'CHEERP_PREFIX': CHEERP_BIN + '../',
       })
     if PROFILING:
       cheerp_args += ['-cheerp-pretty-code'] # get function names, like emcc --profiling
+    cheerp_args += ['-cheerp-strict-linking=warning']
     final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
     utils.delete_file(final)
@@ -327,22 +329,22 @@ class CheerpBenchmarker(Benchmarker):
       else:
         compiler = CHEERP_BIN + '/clang++'
       cmd = [compiler] + cheerp_args + [
-        '-cheerp-linear-heap-size=256',
+        '-cheerp-linear-heap-size=256', '--target=cheerp-wasm',
         '-cheerp-secondary-output-file=' + final.replace('.js', '.wasm'),
         filename,
         '-o', final
       ] + shared_args
-      # print(' '.join(cmd))
+      print(' '.join(cmd))
       run_process(cmd, stdout=PIPE, stderr=PIPE)
       self.filename = final
-      if self.binaryen_opts:
-        run_binaryen_opts(final.replace('.js', '.wasm'), self.binaryen_opts)
+      #if self.binaryen_opts:
+      #  run_binaryen_opts(final.replace('.js', '.wasm'), self.binaryen_opts)
     finally:
       for dir_ in dirs_to_delete:
         utils.delete_dir(dir_)
 
   def run(self, args):
-    return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE)
+    return jsrun.run_js(self.filename, self.engine, stdout=PIPE, stderr=PIPE)
 
   def get_output_files(self):
     return [self.filename, self.filename.replace('.js', '.wasm')]
@@ -354,11 +356,15 @@ benchmarkers = []
 
 if not common.EMTEST_FORCE64:
   benchmarkers += [
-    NativeBenchmarker('clang', [CLANG_CC], [CLANG_CXX]),
+    # NativeBenchmarker('clang', [CLANG_CC], [CLANG_CXX]),
     # NativeBenchmarker('gcc',   ['gcc', '-no-pie'],  ['g++', '-no-pie'])
   ]
+config.SPIDERMONKEY_ENGINE = ['/home/carlo/.jsvu/sm']
+config.V8_ENGINE = ['/home/carlo/.jsvu/v8']
+print (config.V8_ENGINE)
+print (config.SPIDERMONKEY_ENGINE)
 
-if config.V8_ENGINE and config.V8_ENGINE in config.JS_ENGINES:
+if config.V8_ENGINE:
   # avoid the baseline compiler running, because it adds a lot of noise
   # (the nondeterministic time it takes to get to the full compiler ends up
   # mattering as much as the actual benchmark)
@@ -366,28 +372,28 @@ if config.V8_ENGINE and config.V8_ENGINE in config.JS_ENGINES:
   default_v8_name = os.environ.get('EMBENCH_NAME') or 'v8'
   if common.EMTEST_FORCE64:
     benchmarkers += [
-      EmscriptenBenchmarker(default_v8_name, aot_v8, ['-sMEMORY64=2']),
+      #EmscriptenBenchmarker(default_v8_name, aot_v8, ['-sMEMORY64=2']),
     ]
   else:
     benchmarkers += [
-      EmscriptenBenchmarker(default_v8_name, aot_v8),
-      EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
-      EmscriptenBenchmarker(default_v8_name + '-ctors', aot_v8, ['-sEVAL_CTORS']),
+      ########################################EmscriptenBenchmarker(default_v8_name, aot_v8),
+      # EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
+      # EmscriptenBenchmarker(default_v8_name + '-ctors', aot_v8, ['-sEVAL_CTORS']),
       # EmscriptenWasm2CBenchmarker('wasm2c')
     ]
   if os.path.exists(CHEERP_BIN):
     benchmarkers += [
-      # CheerpBenchmarker('cheerp-v8-wasm', aot_v8),
+      CheerpBenchmarker('cheerp-v8-wasm', aot_v8),
     ]
 
-if config.SPIDERMONKEY_ENGINE and config.SPIDERMONKEY_ENGINE in config.JS_ENGINES:
+if config.SPIDERMONKEY_ENGINE:
   # TODO: ensure no baseline compiler is used, see v8
   benchmarkers += [
-    # EmscriptenBenchmarker('sm', SPIDERMONKEY_ENGINE),
+    #EmscriptenBenchmarker('sm', config.SPIDERMONKEY_ENGINE),
   ]
   if os.path.exists(CHEERP_BIN):
     benchmarkers += [
-      # CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE),
+      #CheerpBenchmarker('cheerp-sm-wasm', config.SPIDERMONKEY_ENGINE),
     ]
 
 if config.NODE_JS and config.NODE_JS in config.JS_ENGINES:
@@ -711,7 +717,7 @@ class benchmark(common.RunnerCore):
 
         int x = 0;
 
-        for (int j = 0; j < 27000; j++) {
+        for (int j = 0; j < 27; j++) {
           for (int i = 0; i < arg; i++) {
             if (((x*x+11) % 3 == 0) | ((x*(x+2)+17) % 5 == 0)) {
               x += 2;
@@ -1005,7 +1011,7 @@ class benchmark(common.RunnerCore):
     def lib_builder(name, native, env_init):
       return self.get_library(os.path.join('third_party', 'box2d'), ['box2d.a'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
 
-    self.do_benchmark('box2d', src, 'frame averages', shared_args=['-I' + test_file('third_party/box2d')], lib_builder=lib_builder)
+    self.do_benchmark('box2d', src, 'frame averages', shared_args=['-I' + test_file('third_party/box2d'), "-std=c++17"], lib_builder=lib_builder)
 
   def test_zzz_bullet(self):
     self.emcc_args.remove('-Werror')
