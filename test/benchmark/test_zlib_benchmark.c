@@ -13,7 +13,7 @@
 
 
 // don't inline, to be friendly to js engine osr
-void __attribute__ ((noinline)) doit(unsigned char *buffer, int size, int i) {
+void /*__attribute__ ((noinline))*/ doit(unsigned char *buffer, int size, int i) {
   static unsigned char *buffer2 = NULL;
   static unsigned char *buffer3 = NULL;
 

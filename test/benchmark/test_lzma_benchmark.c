@@ -57,7 +57,7 @@ int64_t lzbench_lzma_decompress(char *inbuf, size_t insize, char *outbuf, size_t
 // main part
 
 // don't inline, to be friendly to js engine osr
-void __attribute__ ((noinline)) doit(char *buffer, int size, int i) {
+void /*__attribute__ ((noinline))*/ doit(char *buffer, int size, int i) {
   static char *buffer2 = NULL;
   static char *buffer3 = NULL;
 
