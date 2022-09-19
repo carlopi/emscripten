@@ -2,13 +2,21 @@
 #include <emscripten/emscripten.h>
 #endif
 
+#include <time.h>
+
 #ifdef WIN32
 #include <Windows.h>
 #define tick_t unsigned long long
 #define aligned_alloc(align, size) _aligned_malloc((size), (align))
 #endif
 
-#ifdef __EMSCRIPTEN__
+#ifdef __CHEERP__
+
+#include <cheerp/client.h>
+#define tick cheerp::date_now
+#define tick_t double
+tick_t ticks_per_sec() { return 1000.0;}
+#elif defined(__EMSCRIPTEN__)
 #define tick emscripten_get_now
 #define tick_t double
 tick_t ticks_per_sec() { return 1000.0; }
