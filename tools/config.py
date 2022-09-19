@@ -19,8 +19,8 @@ logger = logging.getLogger('config')
 EMSCRIPTEN_ROOT = __rootpath__
 NODE_JS = None
 BINARYEN_ROOT = None
-SPIDERMONKEY_ENGINE = None
-V8_ENGINE = None
+SPIDERMONKEY_ENGINE = '/home/carlo/.jsvu/sm-97.0'
+V8_ENGINE = '/home/carlo/.jsvu/v8-9.9.115'
 LLVM_ROOT = None
 LLVM_ADD_VERSION = None
 CLANG_ADD_VERSION = None
@@ -65,13 +65,8 @@ def normalize_config_settings():
   if not JS_ENGINE:
     JS_ENGINE = JS_ENGINES[0]
 
-  # Engine tweaks
-  if SPIDERMONKEY_ENGINE:
-    new_spidermonkey = SPIDERMONKEY_ENGINE
-    if '-w' not in str(new_spidermonkey):
-      new_spidermonkey += ['-w']
-    SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
   NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
+  SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
   V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
   JS_ENGINE = fix_js_engine(JS_ENGINE, listify(JS_ENGINE))
   JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
