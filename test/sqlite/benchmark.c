@@ -10,13 +10,14 @@
 #include <stdlib.h>
 #include <sqlite3.h>
 
-#include <emscripten.h>
+//#include <emscripten.h>
 
-int print = 1;
+
+int printee = 1;
 
 static int callback(void *NotUsed, int argc, char **argv, char **azColName){
   int i;
-  if (!print) return 0;
+  if (!printee) return 0;
   for(i=0; i<argc; i++){
     printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
   }
@@ -86,12 +87,12 @@ int main(int argc, char **argv){
 
   #define TIME(msg) \
     { \
-      double now = emscripten_get_now(); \
+      double now = date_now(); \
       printf(msg " : took %f ms\n", now - t); \
       t = now; \
     }
 
-  t = emscripten_get_now();
+  t = date_now();
   TIME("'startup' - IGNORE THIS VALUE, it is an artifact");
 
   RUN("CREATE TABLE t1(a INTEGER, b INTEGER, c VARCHAR(100));");
@@ -114,7 +115,7 @@ int main(int argc, char **argv){
 
   // Counts
   for (i = 0; i < m; i++) {
-    print = i == 0;
+    printee = i == 0;
     RUN("SELECT count(*) FROM t1;");
     RUN("SELECT count(*) FROM t1 WHERE a == 4");
     RUN("SELECT count(*) FROM t1 WHERE b > 20000 AND b < 50000;");
@@ -128,7 +129,7 @@ int main(int argc, char **argv){
   TIME("create indexes");
 
   for (i = 0; i < m; i++) {
-    print = i == 0;
+    printee = i == 0;
     RUN("SELECT count(*) FROM t1 WHERE a == 4");
     RUN("SELECT count(*) FROM t1 WHERE b > 20000 AND b < 50000;");
   }
