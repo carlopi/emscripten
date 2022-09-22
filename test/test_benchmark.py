@@ -333,7 +333,9 @@ class CheerpBenchmarker(Benchmarker):
         '-cheerp-secondary-output-file=' + final.replace('.js', '.wasm'),
         filename,
         '-o', final
-      ] + shared_args
+      ]
+      if (shared_args != None):
+        cmd += shared_args
       print(' '.join(cmd))
       run_process(cmd, stdout=PIPE, stderr=PIPE)
       self.filename = final
