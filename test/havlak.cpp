@@ -16,8 +16,8 @@
 
 #include "stdio.h"
 #include <set>
-#include <unordered_set> // because set of pointers fails in cheerp
-#include <unordered_map> // because map of pointers fails in cheerp
+//#include <unordered_set> // because set of pointers fails in cheerp
+//#include <unordered_map> // because map of pointers fails in cheerp
 #include <map>
 #include <list>
 #include <vector>
@@ -73,7 +73,7 @@ class BasicBlock {
 //
 class MaoCFG {
  public:
-  typedef std::unordered_map<int, BasicBlock *> NodeMap;
+  typedef std::map<int, BasicBlock *> NodeMap;
   typedef std::list<BasicBlockEdge *> EdgeList;
 
   MaoCFG() : start_node_(NULL) {
@@ -155,8 +155,8 @@ class MaoCFG {
 //
 class SimpleLoop {
  public:
-  typedef std::unordered_set<BasicBlock *> BasicBlockSet;
-  typedef std::unordered_set<SimpleLoop *> LoopSet;
+  typedef std::set<BasicBlock *> BasicBlockSet;
+  typedef std::set<SimpleLoop *> LoopSet;
 
 
   SimpleLoop() : parent_(NULL), is_root_(false), nesting_level_(0),
@@ -204,7 +204,7 @@ class SimpleLoop {
 
  private:
   BasicBlockSet          basic_blocks_;
-  std::unordered_set<SimpleLoop *> children_;
+  std::set<SimpleLoop *> children_;
   SimpleLoop            *parent_;
 
   bool         is_root_: 1;
@@ -447,7 +447,7 @@ class HavlakLoopFinder {
   // selected to guarantee minimal complexity.
   //
   typedef std::vector<UnionFindNode>           NodeVector;
-  typedef std::unordered_map<BasicBlock*, int> BasicBlockMap;
+  typedef std::map<BasicBlock*, int> BasicBlockMap;
   typedef std::list<int>                       IntList;
   typedef std::set<int>                        IntSet;
   typedef std::list<UnionFindNode*>            NodeList;
