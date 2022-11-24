@@ -26,7 +26,7 @@ char src[1024*1024*64+16] = {};
 
 uint8_t resultCheckSum = 0;
 
-void __attribute__((noinline)) test_memcpy(int numTimes, int copySize)
+void /*__attribute__((noinline))*/ test_memcpy(int numTimes, int copySize)
 {
 	for(int i = 0; i < numTimes - 8; i += 8)
 	{
