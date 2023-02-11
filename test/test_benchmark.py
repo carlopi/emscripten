@@ -33,7 +33,7 @@ from tools import building, utils
 # 5: 10 seconds
 DEFAULT_ARG = '4'
 
-TEST_REPS = 1
+TEST_REPS = 5
 
 # by default, run just core benchmarks
 CORE_BENCHMARKS = False
@@ -77,6 +77,7 @@ class Benchmarker():
         else:
           curr = time.time() - start
       else:
+        print(output_parser(output))
         try:
           curr = output_parser(output)
         except Exception as e:
@@ -173,6 +174,9 @@ def run_binaryen_opts(filename, opts):
     '-o', filename
   ] + opts)
 
+EMCC = '/home/carlo/cheerp-rebased/emsdk/upstream/emscripten/emcc'
+EMCC = '/home/carlo/emsdk/upstream/emscripten/emcc'
+print(CLANG_CXX)
 
 class EmscriptenBenchmarker(Benchmarker):
   def __init__(self, name, engine, extra_args=None, env=None, binaryen_opts=None):
@@ -188,6 +192,8 @@ class EmscriptenBenchmarker(Benchmarker):
     emcc_args = emcc_args or []
     self.filename = filename
     llvm_root = self.env.get('LLVM') or config.LLVM_ROOT
+    llvm_root = '/home/carlo/emsdk/upstream/bin'
+    print(llvm_root)
     if lib_builder:
       env_init = self.env.copy()
       # Note that we need to pass in all the flags here because some build
@@ -219,6 +225,7 @@ class EmscriptenBenchmarker(Benchmarker):
       cmd += ['-sFILESYSTEM=0']
     if PROFILING:
       cmd += ['--profiling-funcs']
+    print(cmd)
     self.cmd = cmd
     run_process(cmd, env=self.env)
     if self.binaryen_opts:
@@ -226,6 +233,8 @@ class EmscriptenBenchmarker(Benchmarker):
     self.filename = final
 
   def run(self, args):
+    #print(self.filename, self.engine)
+    return jsrun.run_js(self.filename, self.engine, stdout=PIPE, stderr=PIPE)
     return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE)
 
   def get_output_files(self):
@@ -285,13 +294,13 @@ class EmscriptenWasm2CBenchmarker(EmscriptenBenchmarker):
 
 CHEERP_BIN = '/opt/cheerp/bin/'
 
-
 class CheerpBenchmarker(Benchmarker):
   def __init__(self, name, engine, args=None, binaryen_opts=None):
     self.name = name
     self.engine = engine
     self.args = args or [OPTIMIZATIONS]
     self.binaryen_opts = binaryen_opts or []
+    self.simd = (name == 'cheerp-v8-wasm-simd')
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     cheerp_args = [
@@ -303,7 +312,7 @@ class CheerpBenchmarker(Benchmarker):
       # build as "native" (so no emcc env stuff), but with all the cheerp stuff
       # set in the env
       cheerp_args = cheerp_args + lib_builder(self.name, native=True, env_init={
-        'CFLAGS': ' '.join(LLVM_FEATURE_FLAGS + self.args),
+        'CFLAGS': ' '.join(LLVM_FEATURE_FLAGS + self.args + ["-std=c90"]),
         'CXXFLAGS': ' '.join(LLVM_FEATURE_FLAGS + self.args + ["-Wno-c++11-narrowing"]),
         'CC': CHEERP_BIN + 'clang',
         'CXX': CHEERP_BIN + 'clang++',
@@ -322,6 +331,10 @@ class CheerpBenchmarker(Benchmarker):
     utils.delete_file(final)
     dirs_to_delete = []
     cheerp_args += ['-cheerp-preexecute']
+    if self.simd:
+        cheerp_args += ['-cheerp-wasm-enable=simd']
+    else:
+        cheerp_args += ['-cheerp-wasm-disable=simd']
     try:
       # print(cheerp_args)
       if filename.endswith('.c'):
@@ -346,6 +359,7 @@ class CheerpBenchmarker(Benchmarker):
         utils.delete_dir(dir_)
 
   def run(self, args):
+    #print(self.filename, self.engine)
     return jsrun.run_js(self.filename, self.engine, stdout=PIPE, stderr=PIPE)
 
   def get_output_files(self):
@@ -379,23 +393,29 @@ if config.V8_ENGINE:
   else:
     benchmarkers += [
       ########################################EmscriptenBenchmarker(default_v8_name, aot_v8),
-      # EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
       # EmscriptenBenchmarker(default_v8_name + '-ctors', aot_v8, ['-sEVAL_CTORS']),
       # EmscriptenWasm2CBenchmarker('wasm2c')
     ]
-  if os.path.exists(CHEERP_BIN):
-    benchmarkers += [
-      CheerpBenchmarker('cheerp-v8-wasm', aot_v8),
-    ]
-
-if config.SPIDERMONKEY_ENGINE:
-  # TODO: ensure no baseline compiler is used, see v8
   benchmarkers += [
-    #EmscriptenBenchmarker('sm', config.SPIDERMONKEY_ENGINE),
+    CheerpBenchmarker('cheerp-v8-wasm-no-simd', aot_v8),
+#    CheerpBenchmarker('cheerp-v8-wasm-simd', aot_v8),
+#    EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
   ]
   if os.path.exists(CHEERP_BIN):
     benchmarkers += [
-      #CheerpBenchmarker('cheerp-sm-wasm', config.SPIDERMONKEY_ENGINE),
+#      CheerpBenchmarker('cheerp-v8-wasm-simd', aot_v8)
+#      EmscriptenBenchmarker(default_v8_name + '-lto-simd', aot_v8, ['-flto','-msimd128']),
+    ]
+
+if config.SPIDERMONKEY_ENGINE:
+  aot_sm = config.SPIDERMONKEY_ENGINE + ['--no-ion']
+  # TODO: ensure no baseline compiler is used, see v8
+  benchmarkers += [
+#    EmscriptenBenchmarker('sm', aot_sm, ['-flto']),
+  ]
+  if os.path.exists(CHEERP_BIN):
+    benchmarkers += [
+#      CheerpBenchmarker('cheerp-sm-wasm', aot_sm),
     ]
 
 if config.NODE_JS and config.NODE_JS in config.JS_ENGINES:
@@ -405,7 +425,9 @@ if config.NODE_JS and config.NODE_JS in config.JS_ENGINES:
     ]
   else:
     benchmarkers += [
-      # EmscriptenBenchmarker('Node.js', config.NODE_JS),
+#    EmscriptenBenchmarker('Node.js', config.NODE_JS + ['--no-liftoff'], ['-flto']),
+#    CheerpBenchmarker('cheerp-v8-wasm-no-simd-node', config.NODE_JS + ['--no-liftoff']),
+#    CheerpBenchmarker('cheerp-v8-wasm-simd', config.NODE_JS + ['--no-liftoff']),
     ]
 
 
@@ -856,6 +878,10 @@ class benchmark(common.RunnerCore):
     src = read_file(test_file('havlak.cpp'))
     self.do_benchmark('havlak', src, 'Found', shared_args=['-std=c++11'])
 
+  def test_zzzzz_sieve(self):
+    src = read_file(test_file('segmented_sieve.cpp'))
+    self.do_benchmark('zzzz_sieve', src, '50847534', shared_args=['-std=c++11'])
+
   def test_base64(self):
     src = read_file(test_file('base64.cpp'))
     self.do_benchmark('base64', src, 'decode')
@@ -867,6 +893,7 @@ class benchmark(common.RunnerCore):
 
   def test_zzz_linpack(self):
     def output_parser(output):
+      print(output)
       mflops = re.search(r'Unrolled Double  Precision ([\d\.]+) Mflops', output).group(1)
       return 10000.0 / float(mflops)
     self.do_benchmark('linpack_double', read_file(test_file('benchmark/linpack2.c')), '''Unrolled Double  Precision''', force_c=True, output_parser=output_parser)
@@ -987,13 +1014,14 @@ class benchmark(common.RunnerCore):
 
   def test_zzz_zlib(self):
     self.emcc_args.remove('-Werror')
+    self.emcc_args += ['-Wno-Wdeprecated-non-prototype','-std=c99']
     src = read_file(test_file('benchmark/test_zlib_benchmark.c'))
 
     def lib_builder(name, native, env_init):
       return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), make_args=['libz.a'], native=native, cache_name_extra=name, env_init=env_init)
 
     self.do_benchmark('zlib', src, 'ok.',
-                      force_c=True, shared_args=['-I' + test_file('third_party/zlib')], lib_builder=lib_builder)
+                      force_c=True, shared_args=['-I' + test_file('third_party/zlib'), "-std=c99"], lib_builder=lib_builder)
 
   def test_zzz_coremark(self):
     src = read_file(test_file('third_party/coremark/core_main.c'))

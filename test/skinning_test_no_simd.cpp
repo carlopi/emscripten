@@ -149,6 +149,7 @@ inline void TransformVector(CalVector4& result, const BoneTransform& m, const Ca
   result.z = m.rowz.x * v.x + m.rowz.y * v.y + m.rowz.z * v.z;
 }
 
+__attribute__((noinline))
 void calculateVerticesAndNormals_x87(
   const BoneTransform* boneTransforms,
   int vertexCount,
